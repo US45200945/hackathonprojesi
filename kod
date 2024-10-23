@@ -1,0 +1,96 @@
+import discord
+from discord.ext import commands
+import random
+
+# Intents ayarlarını yap
+intents = discord.Intents.default()
+intents.messages = True  # Mesajları okumak için gerekli
+
+# Botu oluştur
+bot = commands.Bot(command_prefix='/', intents=intents)
+
+participants = {}
+questions = {
+    "Soru 1: Nedeni ne olursa olsun iklimin ortalama durumunda ve/ya da değişkenliğinde onlarca yıl ya da daha uzun süre boyunca gerçekleşen değişiklikler nedir?": "İklim Değişikliği",
+    "Soru 2: Kömür , doğal gaz ve petrol gibi yakıtlara ne denir?": "Fosil yakıtlar",
+    "Soru 3: Yeniden değerlendirilme imkanı olan atıkların çeşitli fiziksel ve/veya kimyasal işlemlerden geçirilerek ikincil hammaddeye dönüştürülerek tekrar üretim sürecine dahil edilmesi nedir?": "Geri Dönüşüm"
+}
+original_questions = questions.copy()  # Orijinal soruları sakla
+current_question = None
+current_answer = None
+
+@bot.event
+async def on_ready():
+    print(f'Bot olarak giriş yapıldı: {bot.user.name}')
+
+@bot.command()
+async def katıl(ctx):
+    if ctx.author not in participants:
+        participants[ctx.author] = 0
+        await ctx.send(f'{ctx.author.mention}, yarışmaya katıldın!')
+    else:
+        await ctx.send(f'{ctx.author.mention}, zaten yarışmadasın!')
+
+@bot.command()
+async def soru(ctx):
+    if ctx.author not in participants:
+        await ctx.send(f'Önce yarışmaya katılmalısın {ctx.author.mention}! Katılmak için `/katıl` komutunu kullanabilirsin.')
+        return
+
+    global current_question, current_answer
+    if current_question is None and questions:
+        question, answer = random.choice(list(questions.items()))
+        current_question, current_answer = question, answer
+        await ctx.send(current_question)
+        # Seçilen soruyu sözlükten çıkar
+        del questions[question]
+    else:
+        if not questions:
+            await ctx.send('Tüm sorular bitti! Yarışmayı bitirmek için `/bitiş` komutunu kullanabilirsin.')
+        else:
+            await ctx.send('Bir soru zaten sorulmuş!')
+
+@bot.command()
+async def cevap(ctx, *, cevap):
+    global current_question, current_answer
+    if ctx.author in participants:
+        if current_question:
+            # Cevapları temizle ve '*' karakterini kaldır
+            cleaned_user_answer = cevap.strip().replace('*', '').lower()
+            cleaned_correct_answer = current_answer.strip().replace('*', '').lower()
+            
+            if cleaned_user_answer == cleaned_correct_answer:
+                participants[ctx.author] += 1
+                await ctx.send(f'Doğru cevap {ctx.author.mention}! Şu anki puanın: {participants[ctx.author]}')
+            else:
+                await ctx.send(f'Yanlış cevap {ctx.author.mention}.')
+                await ctx.send(f'Doğru cevap: {current_answer}.')
+            
+            # Soruyu sıfırla
+            current_question = None
+            current_answer = None
+            await ctx.send("Yeni bir soru açmak için `/soru` komutunu kullanabilirsin.")
+    else:
+        await ctx.send(f'Önce yarışmaya katılmalısın {ctx.author.mention}! Katılmak için `/katıl` komutunu kullanabilirsin.')
+
+@bot.command()
+async def sıralama(ctx):
+    sorted_participants = sorted(participants.items(), key=lambda item: item[1], reverse=True)
+    if sorted_participants:
+        leaderboard = '\n'.join([f'{user.mention}: {score} puan' for user, score in sorted_participants])
+        await ctx.send(f'Sıralama:\n{leaderboard}')
+    else:
+        await ctx.send('Henüz katılımcı yok.')
+
+@bot.command()
+async def bitiş(ctx):
+    winner = max(participants, key=participants.get, default=None)
+    if winner:
+        await ctx.send(f'Yarışma sona erdi! Kazanan: {winner.mention} ({participants[winner]} puan)')
+    participants.clear()
+    # Soruları geri yükle
+    global questions
+    questions = original_questions.copy()
+    await ctx.send('Katılımcılar temizlendi ve sorular geri yüklendi.')
+
+bot.run('bot tokeni')  # Buraya bot token'ını eklemelisin.
