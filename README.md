@@ -1,2 +1,1 @@
-# 
-ENERJİ KAYNAKLARININ İKLİM DĞEİŞİKLİĞİNE SEBEP OLAN VE OLMAYAN ŞEKLİNDE AYIRT EDEBİLEN YAPAY ZEKA MODELİ
+Çevrenin korunumu başlığı altında bilgilerimizi test eden bir discord botu tasarladım.
